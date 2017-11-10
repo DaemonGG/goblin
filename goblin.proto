@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "goblin";
+option java_outer_classname = "GoblinProto";
+
+package goblin;
+
+message JsonQuery {
+  string tag = 1;
+  string json_params = 2;
+}
+
+message JsonQueryReply {
+  VMDescription vms = 1;
+}
+
+service Goblin {
+  rpc Fetch (JsonQuery) returns (JsonQueryReply) {}
+}
+
+message Tag {
+	string key;	// AWS
+	string value;	// GCP has only value set
+	bytes fingerprint; // GCP
+}
+
+// open
+message NetworkInterface {
+	string network;
+	string subnetwork;
+	string networkIP;
+	string name;
+}
+
+// open
+message BlockDevice {
+	string volumeId;
+	string deviceName;
+	string creationTimestamp;
+	string instanceType;
+	int64 deviceSizeGB;
+	bool boot;
+	bool autoDelete;
+	bool encrypted;
+	// For aws: creating | available | in-use | deleting | deleted | error
+	string status;
+	string sourceSnapshotId;
+	// [aws] Available zone.
+	// [gcp] Url of the zone where the disk resides.
+	string zone;
+	repeated Tag tags;
+
+	// aws specifics
+	// The volume type: gp2, io1, st1, sc1, or standard.
+	string volumeType;
+	int64 iops;
+	string kmsKeyId;
+
+	// gcp specifics
+	string lastAttachTimestamp;
+	string lastDetachTimestamp;
+	string sourceImage;
+	message diskEncryptionKey {
+		string rawKey;
+		string sha256;
+	}
+	diskEncryptionKey encryptionKey;
+}
+
+message Instance {
+	string id;
+	string creationTimestamp;
+	string name;
+	string description;	// GCP
+	repeated Tag tags;
+	string machineType;
+	string status;
+	string statusMessage;	// GCP	
+	string zone;
+
+	repeated NetworkInterface networkIfcs;
+
+	// "disk" in GCP, "ebs" in aws.
+	repeated BlockDevice blockDevices;
+
+	// aws specifics
+	// spot | scheduled
+	string instanceLifecycle;
+}
