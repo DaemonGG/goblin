@@ -20,9 +20,9 @@ service Goblin {
 }
 
 message Tag {
-	string key;	// AWS
-	string value;	// GCP has only value set
-	bytes fingerprint; // GCP
+	string key;
+	string value;
+	bytes fingerprint;
 }
 
 // open
@@ -33,7 +33,6 @@ message NetworkInterface {
 	string name;
 }
 
-// open
 message Volume {
 	string volumeId;
 	string deviceName;
@@ -43,13 +42,15 @@ message Volume {
 	bool boot;
 	bool autoDelete;
 	bool encrypted;
+
 	// For aws: creating | available | in-use | deleting | deleted | error
 	string status;
 	string sourceSnapshotId;
+
 	// [aws] Available zone.
 	// [gcp] Url of the zone where the disk resides.
 	string zone;
-	repeated Tag tags;
+	repeated Tag labels;
 	message Attachment {
 		// gcp specifics
 		// URL to the instance
@@ -57,10 +58,12 @@ message Volume {
 
 		// aws specifics
 		string attachTime;
+
 		// for example, /dev/sdh or xvdh
 		string deviceName;
 		string instanceId;
 		string volumeId;
+
 		// [aws] attaching | attached | detaching | detached
 		string status;
 	}
@@ -83,8 +86,13 @@ message Volume {
 	EncryptionKey diskEncryptionKey;
 	EncryptionKey srcImageEncryptionKey;
 	EncryptionKey srcSnapShotEncryptionKey;
+	// Additional tags used to identify valid sources or targets for
+	// network firewalls and are specified by the client during instance
+	// creation.
+	repeated Tag tags;
 }
 
+// open
 message Instance {
 	string instanceId;
 	string creationTimestamp;
@@ -119,7 +127,6 @@ message Instance {
 	// [aws] Valid Values: i386 | x86_64
 	string cpuPlatform;
 	string status;
-
 	string zone;
 
 	repeated NetworkInterface networkIfcs;
@@ -137,6 +144,7 @@ message Instance {
 	// An optional description of this resource. Provide this property when
 	// this instance was created.
 	string description;
+
 	// An optional, human-readable explanation of the status.
 	string statusMessage;
 	string minCpuPlatform
