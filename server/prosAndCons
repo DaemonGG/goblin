@@ -1,4 +1,0 @@
-// Compared to traditional way of implementing rpc service, using jason as a unified string to convey request information has the following benefits.
-1. Dynamically add and delete new service without adding new codes.
-2. Reuse the codes written to execute configuration tasks (background fetch), to handle rpc requests.
-3. Clearly list all kinds of supported RPC types in the same json file as the one listing all background fetching tasks.
