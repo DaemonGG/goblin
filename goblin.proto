@@ -34,7 +34,7 @@ message NetworkInterface {
 }
 
 // open
-message BlockDevice {
+message Volume {
 	string volumeId;
 	string deviceName;
 	string creationTimestamp;
@@ -50,6 +50,21 @@ message BlockDevice {
 	// [gcp] Url of the zone where the disk resides.
 	string zone;
 	repeated Tag tags;
+	message Attachment {
+		// gcp specifics
+		// URL to the instance
+		string user;
+
+		// aws specifics
+		string attachTime;
+		// for example, /dev/sdh or xvdh
+		string deviceName;
+		string instanceId;
+		string volumeId;
+		// [aws] attaching | attached | detaching | detached
+		string status;
+	}
+	repeated Attachment attachments;
 
 	// aws specifics
 	// The volume type: gp2, io1, st1, sc1, or standard.
@@ -61,30 +76,68 @@ message BlockDevice {
 	string lastAttachTimestamp;
 	string lastDetachTimestamp;
 	string sourceImage;
-	message diskEncryptionKey {
+	message EncryptionKey {
 		string rawKey;
 		string sha256;
 	}
-	diskEncryptionKey encryptionKey;
+	EncryptionKey diskEncryptionKey;
+	EncryptionKey srcImageEncryptionKey;
+	EncryptionKey srcSnapShotEncryptionKey;
 }
 
 message Instance {
-	string id;
+	string instanceId;
 	string creationTimestamp;
 	string name;
-	string description;	// GCP
+
+	// [gcp] Each tag within the list must apply with RFC1035
 	repeated Tag tags;
+	// [aws] Valid Values: t1.micro | t2.nano | t2.micro | t2.small |
+        // t2.medium | t2.large | t2.xlarge | t2.2xlarge | m1.small |
+	// m1.medium | m1.large | m1.xlarge | m3.medium | m3.large |
+	// m3.xlarge | m3.2xlarge | m4.large | m4.xlarge | m4.2xlarge |
+	// m4.4xlarge | m4.10xlarge | m4.16xlarge | m2.xlarge | m2.2xlarge |
+	// m2.4xlarge | cr1.8xlarge | r3.large | r3.xlarge | r3.2xlarge |
+	// r3.4xlarge | r3.8xlarge | r4.large | r4.xlarge | r4.2xlarge |
+	// r4.4xlarge | r4.8xlarge | r4.16xlarge | x1.16xlarge | x1.32xlarge |
+	// x1e.32xlarge | i2.xlarge | i2.2xlarge | i2.4xlarge | i2.8xlarge |
+	// i3.large | i3.xlarge | i3.2xlarge | i3.4xlarge | i3.8xlarge |
+	// i3.16xlarge | hi1.4xlarge | hs1.8xlarge | c1.medium | c1.xlarge |
+	// c3.large | c3.xlarge | c3.2xlarge | c3.4xlarge | c3.8xlarge |
+	// c4.large | c4.xlarge | c4.2xlarge | c4.4xlarge | c4.8xlarge |
+	// c5.large | c5.xlarge | c5.2xlarge | c5.4xlarge | c5.9xlarge |
+	// c5.18xlarge | cc1.4xlarge | cc2.8xlarge | g2.2xlarge | g2.8xlarge |
+	// g3.4xlarge | g3.8xlarge | g3.16xlarge | cg1.4xlarge | p2.xlarge |
+	// p2.8xlarge | p2.16xlarge | p3.2xlarge | p3.8xlarge | p3.16xlarge |
+	// d2.xlarge | d2.2xlarge | d2.4xlarge | d2.8xlarge | f1.2xlarge |
+	// f1.16xlarge
+	// [gcp] Either pre-defined machine type, refer to
+	// https://cloud.google.com/compute/docs/machine-types
+        //   #predefined_machine_types
+	// or custom machine type.
 	string machineType;
+	// [aws] Valid Values: i386 | x86_64
+	string cpuPlatform;
 	string status;
-	string statusMessage;	// GCP	
+
 	string zone;
 
 	repeated NetworkInterface networkIfcs;
 
-	// "disk" in GCP, "ebs" in aws.
-	repeated BlockDevice blockDevices;
+	// "disk" in GCP, "ebs" or instance volume in aws.
+	repeated Volume volumes;
 
 	// aws specifics
 	// spot | scheduled
 	string instanceLifecycle;
+	// Valid Values: ovm | xen
+	string hypervisor;
+
+	// gcp specifics
+	// An optional description of this resource. Provide this property when
+	// this instance was created.
+	string description;
+	// An optional, human-readable explanation of the status.
+	string statusMessage;
+	string minCpuPlatform
 }
