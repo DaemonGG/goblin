@@ -6,17 +6,16 @@ option java_outer_classname = "GoblinProto";
 
 package goblin;
 
-message JsonQuery {
-  string tag = 1;
-  string json_params = 2;
+enum TriState {
+  NOT_KNOWN = 0,
+  TRUE = 1,
+  FALSE = 3
 }
 
-message JsonQueryReply {
-  VMDescription vms = 1;
-}
-
-service Goblin {
-  rpc Fetch (JsonQuery) returns (JsonQueryReply) {}
+message Ipv4Address {
+  string ip_address = 1;
+  string subnet_mask = 2;
+  TriState public = 3;
 }
 
 message Tag {
@@ -33,119 +32,233 @@ message NetworkInterface {
 	string name;
 }
 
-message Volume {
-	string volumeId;
-	string deviceName;
-	string creationTimestamp;
-	string instanceType;
-	int64 deviceSizeGB;
-	bool boot;
-	bool autoDelete;
-	bool encrypted;
+message VolumeMetadata {
+	string volume_id;
+	string volume_name;
+	string creation_timestamp;
 
-	// For aws: creating | available | in-use | deleting | deleted | error
+  // [aws] standard | io1 | gp2 | sc1 | st1
+  // [gcp] URL of the disk type resource describing which disk type to use to 
+  // create the disk. Provide this when creating the disk.
+	string volume_type;
+
+  // Volume size in GB.
+	int64 size_gb;
+
+  // Indicates whether this disk is bootable.
+	bool boot;
+
+  // Indicates whether this volume is deleted on instance termination.
+	bool autoDelete;
+
+
+	// [aws] creating | available | in-use | deleting | deleted | error
 	string status;
-	string sourceSnapshotId;
 
 	// [aws] Available zone.
 	// [gcp] Url of the zone where the disk resides.
 	string zone;
-	repeated Tag labels;
-	message Attachment {
-		// gcp specifics
-		// URL to the instance
-		string user;
 
+  // Additional aws metadata.
+  AwsEbsVolume aws_ebs_metadata;
+
+  // Additional gcp metadata.
+  GcpDisk gcp_disk_metadata;
+}
+
+message AwsEbsVolume {
+	message Attachment {
 		// aws specifics
 		string attachTime;
 
 		// for example, /dev/sdh or xvdh
 		string deviceName;
-		string instanceId;
-		string volumeId;
+
+    // Instance id this volume is attached to.
+		string instance_id;
+
+    // Volume id.
+		string volume_id;
 
 		// [aws] attaching | attached | detaching | detached
 		string status;
 	}
-	repeated Attachment attachments;
 
-	// aws specifics
-	// The volume type: gp2, io1, st1, sc1, or standard.
-	string volumeType;
+  // Indicates whether the EBS volume is encrypted. Encrypted volumes can only 
+  // be attached to instances that support Amazon EBS encryption. Only blank
+  // volumes can be encrypted on creation.
+	bool encrypted;
+
+  // The number of I/O operations per second (IOPS) that the volume supports. 
+  // For io1, this represents the number of IOPS that are provisioned for the 
+  // volume. For gp2, this represents the baseline performance of the volume
+  // and the rate at which the volume accumulates I/O credits for bursting. For
+  // more information about General Purpose SSD baseline performance, I/O
+  // credits, and bursting, see Amazon EBS Volume Types (
+  // http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html) in
+  // the Amazon Elastic Compute Cloud User Guide.
 	int64 iops;
+
+  // The full ARN of the AWS Key Management Service (AWS KMS) customer master 
+  // key (CMK) that was used to protect the volume encryption key for the 
+  // volume.
 	string kmsKeyId;
 
-	// gcp specifics
+  // Any tags assigned to the volume.
+	repeated Tag tag_set;
+}
+
+message GcpDisk {
+  // More detailed explanation of each field, refer
+  // https://cloud.google.com/compute/docs/reference/latest/disks.
+
+  // An optional description of this resource. Provide this property when this 
+  // disk was created.
+  string description = 1;
+
+  // URL to the instance
+  string user;
+
+  // Server-defined fully-qualified URL for this resource.
+  string selfLink;
+
+  // Timestamp of last attachment.
 	string lastAttachTimestamp;
+
+  // Timestamp of last detachment.
 	string lastDetachTimestamp;
-	string sourceImage;
+
+  // The source snapshot used to create this disk.
+  string source_snapshot;
+
+  // The unique ID of the snapshot used to create this disk. This value 
+  // identifies the exact snapshot that was used to create this persistent disk. 
+  // For example, if you created the persistent disk from a snapshot that was 
+  // later deleted and recreated under the same name, the source snapshot ID 
+  // would identify the exact version of the snapshot that was used.
+  string source_snapshot_id;
+
+  // The source image used to create this disk. If the source image is deleted, 
+  // this field will not be set.
+  string source_image;
+
+  // The ID value of the image used to create this disk. This value identifies 
+  // the exact image that was used to create this persistent disk. For example, 
+  // if you created the persistent disk from an image that was later deleted and 
+  // recreated under the same name, the source image ID would identify the exact 
+  // version of the image that was used.
+  string source_image_id;
+
 	message EncryptionKey {
-		string rawKey;
-		string sha256;
+		string rawKey = 1;
+		string sha256 = 2;
 	}
-	EncryptionKey diskEncryptionKey;
-	EncryptionKey srcImageEncryptionKey;
-	EncryptionKey srcSnapShotEncryptionKey;
+
+  // The customer-supplied encryption key of the disk.
+	EncryptionKey disk_encryption_key;
+
+  // The customer-supplied encryption key of the source image.
+	EncryptionKey src_image_encryption_key;
+
+  // The customer-supplied encryption key of the source snapshot.
+	EncryptionKey src_snapshot_encryption_key;
+
 	// Additional tags used to identify valid sources or targets for
 	// network firewalls and are specified by the client during instance
 	// creation.
 	repeated Tag tags;
 }
 
-// open
-message Instance {
-	string instanceId;
-	string creationTimestamp;
-	string name;
+// Contains information about a VM.
+// Generic metadata or attributes that are common to all management systems are
+// present as top-level fields. Eg- instance-id, hostname, etc.
+// Information that is very specific to a compute management system is captured
+// inside sub-messages for those management systems. When in doubt place the
+// management system specific info inside the respective sub-message. They can
+// always be promoted to the top-level generic information in future if deemed
+// necessary.
+message VmMetaData {
+  // Unique identifier that is provided by the cloud mgmt software.
+  // Eg: instance-id provided by AWS.
+  string external_id = 1;
+
+  // Hostname as provided by the mgmt software.
+  string hostname = 2;
+
+  // List of IPv4 addresses.
+  repeated Ipv4Address ipv4_addresses  = 3;
+
+  // DNS names.
+  // [aws] (IPv4 only) The public DNS name assigned to the instance. This name 
+  // is not available until the instance enters the running state. For EC2-VPC, 
+  // this name is only available if you've enabled DNS hostnames for your VPC.
+  repeated string dns_names = 4;
+
+  // Whether the VM has public IP assigned.
+  bool has_public_ip = 5;
+
+  // Timestamp when this instance was created.
+  string creation_timestamp;
 
 	// [gcp] Each tag within the list must apply with RFC1035
 	repeated Tag tags;
-	// [aws] Valid Values: t1.micro | t2.nano | t2.micro | t2.small |
-        // t2.medium | t2.large | t2.xlarge | t2.2xlarge | m1.small |
-	// m1.medium | m1.large | m1.xlarge | m3.medium | m3.large |
-	// m3.xlarge | m3.2xlarge | m4.large | m4.xlarge | m4.2xlarge |
-	// m4.4xlarge | m4.10xlarge | m4.16xlarge | m2.xlarge | m2.2xlarge |
-	// m2.4xlarge | cr1.8xlarge | r3.large | r3.xlarge | r3.2xlarge |
-	// r3.4xlarge | r3.8xlarge | r4.large | r4.xlarge | r4.2xlarge |
-	// r4.4xlarge | r4.8xlarge | r4.16xlarge | x1.16xlarge | x1.32xlarge |
-	// x1e.32xlarge | i2.xlarge | i2.2xlarge | i2.4xlarge | i2.8xlarge |
-	// i3.large | i3.xlarge | i3.2xlarge | i3.4xlarge | i3.8xlarge |
-	// i3.16xlarge | hi1.4xlarge | hs1.8xlarge | c1.medium | c1.xlarge |
-	// c3.large | c3.xlarge | c3.2xlarge | c3.4xlarge | c3.8xlarge |
-	// c4.large | c4.xlarge | c4.2xlarge | c4.4xlarge | c4.8xlarge |
-	// c5.large | c5.xlarge | c5.2xlarge | c5.4xlarge | c5.9xlarge |
-	// c5.18xlarge | cc1.4xlarge | cc2.8xlarge | g2.2xlarge | g2.8xlarge |
-	// g3.4xlarge | g3.8xlarge | g3.16xlarge | cg1.4xlarge | p2.xlarge |
-	// p2.8xlarge | p2.16xlarge | p3.2xlarge | p3.8xlarge | p3.16xlarge |
-	// d2.xlarge | d2.2xlarge | d2.4xlarge | d2.8xlarge | f1.2xlarge |
-	// f1.16xlarge
+
+  // [aws] Refer to 
 	// [gcp] Either pre-defined machine type, refer to
 	// https://cloud.google.com/compute/docs/machine-types
-        //   #predefined_machine_types
+  //   #predefined_machine_types
 	// or custom machine type.
-	string machineType;
-	// [aws] Valid Values: i386 | x86_64
-	string cpuPlatform;
-	string status;
-	string zone;
+	string machine_type;
 
-	repeated NetworkInterface networkIfcs;
+  // [aws] Valid Values: pending | running | shutting-down | terminated | 
+  // stopping | stopped
+  // [gcp] PROVISIONING, STAGING, RUNNING, STOPPING, STOPPED, SUSPENDING, 
+  // SUSPENDED, and TERMINATED.
+  string state_name;
 
-	// "disk" in GCP, "ebs" or instance volume in aws.
-	repeated Volume volumes;
+  // Volumes attached to this instance. They are "disk" in GCP, "ebs" or
+  // "instance-store" in aws.
+	repeated VolumeMetadata volumes;
+}
 
-	// aws specifics
-	// spot | scheduled
-	string instanceLifecycle;
+message AWSEc2InstanceInfo {
+  message Placement {
+
+  }
+
+  // [aws] The location where the instance launched, if applicable.
+  Placement placement;
+
+	// Valid Values: spot | scheduled
+	string instance_lifecycle;
+
 	// Valid Values: ovm | xen
 	string hypervisor;
+
+  // [aws] required. 
+	uint32 state_code;
+
+	// The architecture of the image. Valid Values: i386 | x86_64
+  string architecture;
+}
+
+message GCPVmIntanceInfo {
+  // URL of the zone where the instance resides.
+	string zone;
 
 	// gcp specifics
 	// An optional description of this resource. Provide this property when
 	// this instance was created.
 	string description;
 
-	// An optional, human-readable explanation of the status.
-	string statusMessage;
-	string minCpuPlatform
-}
+  // Human-readable explanation of the status.
+  string state_message;
+
+  // The CPU platform used by this instance.
+	string cpuPlatform;
+
+  // Specifies a minimum CPU platform for the VM instance. Applicable values 
+  // are the friendly names of CPU platforms, such as minCpuPlatform: "Intel 
+  // Haswell" or minCpuPlatform: "Intel Sandy Bridge"
+  string minCpuPlatform;
+} 
