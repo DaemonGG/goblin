@@ -19,74 +19,74 @@ message Ipv4Address {
 }
 
 message Tag {
-  string key;
-  string value;
-  bytes fingerprint;
+  string key = 1;
+  string value = 2;
+  bytes fingerprint = 3;
 }
 
 // open
 message NetworkInterface {
-  string network;
-  string subnetwork;
-  string networkIP;
-  string name;
+  string network = 1;
+  string subnetwork = 2;
+  string networkIP = 3;
+  string name = 4;
 }
 
 message VolumeMetadata {
-  string volume_id;
-  string volume_name;
-  string creation_timestamp;
+  string volume_id = 1;
+  string volume_name= 2;
+  string creation_timestamp = 3;
 
   // [aws] standard | io1 | gp2 | sc1 | st1
   // [gcp] URL of the disk type resource describing which disk type to use to 
   // create the disk. Provide this when creating the disk.
-  string volume_type;
+  string volume_type = 4;
 
   // Volume size in GB.
-  int64 size_gb;
+  int64 size_gb = 5;
 
   // Indicates whether this disk is bootable.
-  bool boot;
+  bool boot = 6;
 
   // Indicates whether this volume is deleted on instance termination.
-  bool autoDelete;
+  bool autoDelete = 7;
 
   // [aws] creating | available | in-use | deleting | deleted | error
-  string status;
+  string status = 8;
 
   // [aws] Available zone.
   // [gcp] Url of the zone where the disk resides.
-  string zone;
+  string zone = 9;
 
   // Additional aws metadata.
-  AwsEbsVolume aws_ebs_metadata;
+  AwsEbsVolume aws_ebs_metadata = 10;
 
   // Additional gcp metadata.
-  GcpDisk gcp_disk_metadata;
+  GcpDisk gcp_disk_metadata = 11;
 }
 
 message AwsEbsVolume {
   message Attachment {
     // aws specifics
-    string attachTime;
+    string attachTime = 1;
 
     // for example, /dev/sdh or xvdh
-    string deviceName;
+    string deviceName = 2;
 
     // Instance id this volume is attached to.
-    string instance_id;
+    string instance_id = 3;
 
     // Volume id.
-    string volume_id;
+    string volume_id = 4;
 
     // [aws] attaching | attached | detaching | detached
-    string status;
+    string status = 5;
   }
 
   // Indicates whether the EBS volume is encrypted. Encrypted volumes can only 
   // be attached to instances that support Amazon EBS encryption. Only blank
   // volumes can be encrypted on creation.
-  bool encrypted;
+  bool encrypted = 6;
 
   // The number of I/O operations per second (IOPS) that the volume supports. 
   // For io1, this represents the number of IOPS that are provisioned for the 
@@ -96,15 +96,15 @@ message AwsEbsVolume {
   // credits, and bursting, see Amazon EBS Volume Types (
   // http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html) in
   // the Amazon Elastic Compute Cloud User Guide.
-  int64 iops;
+  int64 iops = 6;
 
   // The full ARN of the AWS Key Management Service (AWS KMS) customer master 
   // key (CMK) that was used to protect the volume encryption key for the 
   // volume.
-  string kmsKeyId;
+  string kmsKeyId = 7;
 
   // Any tags assigned to the volume.
-  repeated Tag tag_set;
+  repeated Tag tag_set = 8;
 }
 
 message GcpDisk {
@@ -116,37 +116,37 @@ message GcpDisk {
   string description = 1;
 
   // URL to the instance
-  string user;
+  string user = 2;
 
   // Server-defined fully-qualified URL for this resource.
-  string selfLink;
+  string selfLink = 3;
 
   // Timestamp of last attachment.
-  string lastAttachTimestamp;
+  string lastAttachTimestamp = 4;
 
   // Timestamp of last detachment.
-  string lastDetachTimestamp;
+  string lastDetachTimestamp = 5;
 
   // The source snapshot used to create this disk.
-  string source_snapshot;
+  string source_snapshot = 6;
 
   // The unique ID of the snapshot used to create this disk. This value 
   // identifies the exact snapshot that was used to create this persistent disk. 
   // For example, if you created the persistent disk from a snapshot that was 
   // later deleted and recreated under the same name, the source snapshot ID 
   // would identify the exact version of the snapshot that was used.
-  string source_snapshot_id;
+  string source_snapshot_id = 7;
 
   // The source image used to create this disk. If the source image is deleted, 
   // this field will not be set.
-  string source_image;
+  string source_image = 8;
 
   // The ID value of the image used to create this disk. This value identifies 
   // the exact image that was used to create this persistent disk. For example, 
   // if you created the persistent disk from an image that was later deleted and 
   // recreated under the same name, the source image ID would identify the exact 
   // version of the image that was used.
-  string source_image_id;
+  string source_image_id = 9;
 
   message EncryptionKey {
     string rawKey = 1;
@@ -154,18 +154,18 @@ message GcpDisk {
   }
 
   // The customer-supplied encryption key of the disk.
-  EncryptionKey disk_encryption_key;
+  EncryptionKey disk_encryption_key = 10;
 
   // The customer-supplied encryption key of the source image.
-  EncryptionKey src_image_encryption_key;
+  EncryptionKey src_image_encryption_key = 11;
 
   // The customer-supplied encryption key of the source snapshot.
-  EncryptionKey src_snapshot_encryption_key;
+  EncryptionKey src_snapshot_encryption_key = 12;
 
   // Additional tags used to identify valid sources or targets for
   // network firewalls and are specified by the client during instance
   // creation.
-  repeated Tag tags;
+  repeated Tag tags = 13;
 }
 
 // Contains information about a VM.
@@ -197,27 +197,27 @@ message VmMetaData {
   bool has_public_ip = 5;
 
   // Timestamp when this instance was created.
-  string creation_timestamp;
+  string creation_timestamp = 6;
 
   // [gcp] Each tag within the list must apply with RFC1035
-  repeated Tag tags;
+  repeated Tag tags = 7;
 
   // [aws] Refer to 
   // [gcp] Either pre-defined machine type, refer to
   // https://cloud.google.com/compute/docs/machine-types
   //   #predefined_machine_types
   // or custom machine type.
-  string machine_type;
+  string machine_type = 8;
 
   // [aws] Valid Values: pending | running | shutting-down | terminated | 
   // stopping | stopped
   // [gcp] PROVISIONING, STAGING, RUNNING, STOPPING, STOPPED, SUSPENDING, 
   // SUSPENDED, and TERMINATED.
-  string state_name;
+  string state_name = 9;
 
   // Volumes attached to this instance. They are "disk" in GCP, "ebs" or
   // "instance-store" in aws.
-  repeated VolumeMetadata volumes;
+  repeated VolumeMetadata volumes = 10;
 }
 
 message AWSEc2InstanceInfo {
