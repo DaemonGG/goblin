@@ -1,15 +1,17 @@
 package cron
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"time"
 
+	"goblin/util/cron/scheduling"
 	"goblin/util/prio"
 )
 
 const (
-	Forever time.Duration = math.MaxInt64 * time.Hour
+	Forever time.Duration = math.MaxInt64
 )
 
 type Function interface {
@@ -22,41 +24,35 @@ type FuncJob func()
 
 func (f FuncJob) Run() { f() }
 
-type Schedule interface {
-	// Given the current time, return the next run time.
-	Next(time.Time) time.Time
-
-	// Provide the first execution time.
-	// After() time.Duration
-}
-
 type Job struct {
 	// The function to execute periodically.
 	function Function
 
 	// Represents how to schedule this function.
-	scheduler Schedule
+	scheduler scheduling.Schedule
 
 	// The next time this function will be executed.
 	next time.Time
 
 	// The most recent time this function was executed.
-	prev time.Time
+	actual_prev time.Time
 
 	// Index of this Job object in priority queue. Index -1 means this object is
 	// not in priority queue. Default value is -1.
 	index int
 }
 
-func (job_1 *Job) Less(job_2 *Job) bool {
-	return job_1.next.Before(job_2.next)
+func (job_1 *Job) Less(job_2 prio.Interface) bool {
+	job_2_ := job_2.(*Job)
+	return job_1.next.Before(job_2_.next)
 }
 
-func (job *Job) Index(i int) bool {
+func (job *Job) Index(i int) {
 	job.index = i
 }
 
 func (job *Job) Run() {
+	job.actual_prev = time.Now()
 	job.function.Run()
 }
 
@@ -66,22 +62,23 @@ func (job *Job) NextRunTime() time.Time {
 
 func (job *Job) setNextRunTime() {
 	job.next = job.scheduler.Next()
-	job.prev = job.next
 }
 
 type Cron struct {
-	jobs      Queue
+	jobs      prio.Queue
 	add_job   chan *Job
 	stop      chan bool
 	destroyed bool
 }
 
-func NewCron() *Cron {
-	return &Cron{
-		jobs:    prio.New([]Job{}),
+func New() *Cron {
+	c := &Cron{
+		jobs:    prio.New(),
 		add_job: make(chan *Job),
 		stop:    make(chan bool),
 	}
+	go c.run()
+	return c
 }
 
 func (cron *Cron) run() {
@@ -91,25 +88,28 @@ func (cron *Cron) run() {
 		if cron.jobs.Empty() {
 			timer = time.NewTimer(Forever)
 		} else {
-			first_job := cron.jobs.Peek()
-			timer = time.NewTimer(first_job.next.Sub(now))
+			first_job := cron.jobs.Peek().(*Job)
+			fmt.Println("Next time: ", first_job.NextRunTime())
+			timer = time.NewTimer(first_job.NextRunTime().Sub(now))
 		}
 
 		for {
 			select {
 			case <-timer.C:
-				for !cron.jobs.Peek().NextRunTime().After(now) {
-					one_job := cron.jobs.Pop()
-					if one_job.next.IsZero() {
+				for !cron.jobs.Peek().(*Job).NextRunTime().After(time.Now()) {
+					one_job := cron.jobs.Pop().(*Job)
+					if one_job.NextRunTime().IsZero() {
 						log.Fatalln("Job scheduled without next time set.")
 					}
+					fmt.Println("Scheduled time: ", time.Now())
 					go one_job.Run()
 					one_job.setNextRunTime()
-					jobs.Push(one_job)
+					cron.jobs.Push(one_job)
 				}
 
 			case new_job := <-cron.add_job:
-				new_job.setNextRunTime(now)
+				fmt.Println("Get new job, ", time.Now())
+				new_job.setNextRunTime()
 				cron.jobs.Push(new_job)
 
 			case <-cron.stop:
@@ -125,18 +125,21 @@ func (cron *Cron) Add(spec string, f func()) {
 	if cron.destroyed {
 		log.Fatalln("Cron has been destroyed")
 	}
-	if parsed_scheduler, err := parse(spec); err {
+	if parsed_scheduler, err := scheduling.Parse(spec); err != nil {
 		log.Fatalf("Error when parsing spec[%s]:%s\n", spec, err)
+	} else {
+		new_job := &Job{
+			function:  FuncJob(f),
+			scheduler: parsed_scheduler,
+			index:     -1,
+		}
+		cron.add_job <- new_job
 	}
-	new_job := &Job{
-		function:  FuncJob(f),
-		scheduler: parsed_scheduler,
-		index:     -1,
-	}
-	cron.add_job <- new_job
 }
 
 func (cron *Cron) DestroySelf() {
-	c.stop <- true
-	// TODO: Need to release memory in Queue
+	if !cron.destroyed {
+		cron.stop <- true
+		// TODO: Need to release memory in Queue
+	}
 }

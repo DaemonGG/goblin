@@ -111,17 +111,6 @@ func heapify(h []Interface) {
 	}
 }
 
-// Establishes the heap invariant in O(n) time.
-func heapify(h []Interface) {
-	n := len(h)
-	for i := n - 1; i >= n/2; i-- {
-		h[i].Index(i)
-	}
-	for i := n/2 - 1; i >= 0; i-- { // h[i].Index(i) is done by down.
-		down(h, i)
-	}
-}
-
 // Moves element at position i towards top of heap to restore invariant.
 func up(h []Interface, i int) {
 	for {
